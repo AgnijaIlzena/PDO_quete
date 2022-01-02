@@ -1,30 +1,57 @@
 <?php
 
-
-// Connect to DB
-
 require_once 'connec.php';
 
 $pdo = new \PDO(DSN, USER, PASS);
 
-$firstname = $_POST['firstname'];
-$lastname = $_POST['lastname'];
+$errors = [];
+if (!empty($_POST)) {
+    if (isset($_POST['firstname'])) {
+        $firstname = $_POST['firstname'];
+    } else {
+        $firstname = null;
+    }
 
-// Add a new values in DB via form. Prepared (secured) request used.
+    if (isset($_POST['lastname'])) {
+        $lastname = $_POST['lastname'];
+    } else {
+        $lastname = null;
+    }
 
-$query = 'INSERT INTO friend (firstname, lastname) VALUES (:firstname, :lastname)';
-$statement = $pdo->prepare($query);
+    if (!$firstname || !$lastname) {
+        $errors[] = 'The fields are required!';
+    }
 
-$statement->bindValue(':firstname', $firstname, \PDO::PARAM_STR);
-$statement->bindValue(':lastname', $lastname, \PDO::PARAM_STR);
+    if ( strlen($firstname) > 45 || strlen($lastname) > 45 ) {
+        $errors[] = 'Not more than 45 caracters allowed';
+    }
 
-$statement->execute();
+    if (!preg_match("/.*\S.*./", $firstname)|| !preg_match("/.*\S.*./", $lastname)) {
+        $errors[] = 'Not allowed to use only white space';
+    }
 
-// Retrieve All from the table by using  html list .
+    if (!$errors) {
+        $query = 'INSERT INTO friend (firstname, lastname) VALUES (:firstname, :lastname)';
+        $statement = $pdo->prepare($query);
+
+        $statement->bindValue(':firstname', $firstname, \PDO::PARAM_STR);
+        $statement->bindValue(':lastname', $lastname, \PDO::PARAM_STR);
+
+        $statement->execute([
+            ':firstname' => trim($firstname),
+            ':lastname' => trim($lastname),
+        ]);
+
+        header('Location: /index2.php'); die;
+    }
+}
+
 
 $query = "SELECT * FROM friend";
 $statement = $pdo->query($query);
 $friends = $statement->fetchAll();
+
+
 
 ?>
 
@@ -40,8 +67,6 @@ $friends = $statement->fetchAll();
 
     <ul>
 
-
-
 <?php
           foreach($friends as $friend) {
               echo $friend['firstname'] . ' ' . $friend['lastname'] . '<br>';
@@ -50,7 +75,13 @@ $friends = $statement->fetchAll();
 
     </ul>
 
-    <form action="index2.php" method="post">
+    <?php
+    foreach($errors as $error) {
+        echo '<p style="color: red">' . $error . '</p>';
+    }
+    ?>
+
+    <form action="" method="post">
 
         <label for="firstname" >FIRST NAME:</label>
         <input type="text" id="firstname" name="firstname" >
@@ -58,7 +89,7 @@ $friends = $statement->fetchAll();
         <label for="lastname" >LAST NAME</label>
         <input type="text" id="lastname" name="lastname">
 
-        <input type="submit" value="Send Your Data">
+        <input type="submit" value="Send Your Data" name="submit">
 
     </form>
 
